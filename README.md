@@ -1,0 +1,2 @@
+# wolf
+Traitor game
