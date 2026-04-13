@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ultimate Werewolf</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0b12;--bg2:#111320;--bg3:#181b2e;--bg4:#1f2340;
+  --text:#d4d0c8;--text-dim:#7a7668;--text-bright:#f0ece0;
+  --gold:#c9a84c;--gold-dim:#8a7230;--gold-bright:#e8c85c;
+  --red:#a83232;--red-bright:#d44;--red-dim:#6b2020;
+  --blue:#3a5a8c;--blue-bright:#5888cc;
+  --green:#3a7a4a;--green-bright:#5cb870;
+  --purple:#6a4a8a;--purple-bright:#9a6acc;
+  --silver:#8a8a9a;
+  --card-bg:#15172a;--card-border:#2a2e48;
+  --moon:radial-gradient(circle at 35% 30%,#f5f0d0 0%,#d4c888 40%,#a89848 100%);
+  --shadow:0 4px 24px rgba(0,0,0,.6);
+  --radius:8px;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Crimson Text',Georgia,serif;
+  background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;
+}
+/* ── Textures ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 0%,rgba(40,40,80,.3) 0%,transparent 60%),
+    radial-gradient(circle at 80% 20%,rgba(201,168,76,.06) 0%,transparent 40%);
+}
+/* ── Typography ── */
+h1,h2,h3,.heading{font-family:'Cinzel',serif;font-weight:700;color:var(--text-bright);letter-spacing:.04em}
+.mono{font-family:'JetBrains Mono',monospace}
+/* ── Layout ── */
+.screen{
+  display:none;flex-direction:column;align-items:center;
+  height:100vh;overflow-y:auto;padding:20px;position:relative;z-index:1;
+}
+.screen.active{display:flex}
+.container{width:100%;max-width:600px}
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 28px;border:1px solid var(--gold-dim);border-radius:var(--radius);
+  background:linear-gradient(180deg,rgba(201,168,76,.12) 0%,rgba(201,168,76,.04) 100%);
+  color:var(--gold);font-family:'Cinzel',serif;font-size:15px;font-weight:600;
+  cursor:pointer;transition:all .2s;letter-spacing:.06em;
+}
+.btn:hover{background:linear-gradient(180deg,rgba(201,168,76,.25) 0%,rgba(201,168,76,.1) 100%);border-color:var(--gold);color:var(--gold-bright);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn.primary{background:linear-gradient(180deg,rgba(201,168,76,.3) 0%,rgba(201,168,76,.15) 100%);border-color:var(--gold)}
+.btn.danger{border-color:var(--red-dim);color:var(--red-bright);background:linear-gradient(180deg,rgba(168,50,50,.15) 0%,rgba(168,50,50,.05) 100%)}
+.btn.danger:hover{border-color:var(--red-bright);background:linear-gradient(180deg,rgba(168,50,50,.3) 0%,rgba(168,50,50,.1) 100%)}
+.btn.small{padding:8px 16px;font-size:13px}
+.btn.ghost{border-color:var(--card-border);color:var(--text-dim);background:transparent}
+.btn.ghost:hover{border-color:var(--silver);color:var(--text)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+/* ── Inputs ── */
+input[type="text"],input[type="number"]{
+  padding:12px 16px;border:1px solid var(--card-border);border-radius:var(--radius);
+  background:var(--card-bg);color:var(--text-bright);font-family:'Crimson Text',serif;font-size:16px;
+  outline:none;transition:border-color .2s;width:100%;
+}
+input:focus{border-color:var(--gold-dim)}
+input::placeholder{color:var(--text-dim)}
+/* ── Cards ── */
+.card{
+  background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);
+}
+.card.glow{border-color:var(--gold-dim);box-shadow:var(--shadow),0 0 20px rgba(201,168,76,.08)}
+/* ── Moon logo ── */
+.moon-logo{
+  width:80px;height:80px;border-radius:50%;
+  background:var(--moon);
+  box-shadow:0 0 40px rgba(201,168,76,.2),0 0 80px rgba(201,168,76,.08);
+  margin:0 auto 16px;
+}
+/* ── Join code ── */
+.join-code{
+  font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;
+  letter-spacing:.2em;color:var(--gold-bright);text-align:center;
+  padding:12px 24px;border:2px dashed var(--gold-dim);border-radius:var(--radius);
+  background:rgba(201,168,76,.04);
+}
+/* ── Player list ── */
+.player-list{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.player-item{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border-radius:var(--radius);background:rgba(255,255,255,.02);
+  border:1px solid transparent;transition:all .2s;
+}
+.player-item.me{border-color:var(--gold-dim);background:rgba(201,168,76,.04)}
+.player-item .dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);flex-shrink:0}
+.player-item .dot.ready{background:var(--green-bright)}
+.player-item .dot.disconnected{background:var(--red)}
+.player-item .name{flex:1;font-size:16px}
+.player-item .badge{font-size:11px;padding:2px 8px;border-radius:4px;font-family:'Cinzel',serif;letter-spacing:.06em}
+.player-item .badge.host{background:rgba(201,168,76,.15);color:var(--gold)}
+.player-item .badge.dead{background:rgba(168,50,50,.15);color:var(--red-bright)}
+/* ── Role grid ── */
+.role-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:12px 0;
+}
+.role-chip{
+  display:flex;align-items:center;gap:6px;padding:8px 10px;
+  border-radius:var(--radius);border:1px solid var(--card-border);
+  background:var(--card-bg);cursor:pointer;transition:all .15s;font-size:14px;
+  user-select:none;
+}
+.role-chip:hover{border-color:var(--silver);background:var(--bg3)}
+.role-chip.selected{border-color:var(--gold);background:rgba(201,168,76,.08)}
+.role-chip.team-werewolf{border-left:3px solid var(--red)}
+.role-chip.team-village{border-left:3px solid var(--blue)}
+.role-chip.team-neutral{border-left:3px solid var(--purple)}
+.role-chip .emoji{font-size:18px}
+.role-chip .count{
+  margin-left:auto;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  border-radius:4px;background:rgba(201,168,76,.15);color:var(--gold);font-size:12px;font-weight:600;
+  font-family:'JetBrains Mono',monospace;
+}
+/* ── Role card (your role) ── */
+.role-reveal{
+  text-align:center;padding:32px 24px;border-radius:12px;
+  background:linear-gradient(180deg,var(--bg3) 0%,var(--card-bg) 100%);
+  border:1px solid var(--card-border);position:relative;overflow:hidden;
+}
+.role-reveal .emoji{font-size:64px;display:block;margin-bottom:12px}
+.role-reveal .role-name{font-size:28px;margin-bottom:8px}
+.role-reveal .role-desc{color:var(--text-dim);font-size:16px;line-height:1.5}
+.role-reveal.team-werewolf{border-color:var(--red-dim);background:linear-gradient(180deg,rgba(168,50,50,.08) 0%,var(--card-bg) 100%)}
+.role-reveal.team-village{border-color:var(--blue);background:linear-gradient(180deg,rgba(58,90,140,.08) 0%,var(--card-bg) 100%)}
+.role-reveal.team-neutral{border-color:var(--purple);background:linear-gradient(180deg,rgba(106,74,138,.08) 0%,var(--card-bg) 100%)}
+/* ── Night action panel ── */
+.night-panel{
+  padding:24px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(10,10,30,.95) 0%,var(--card-bg) 100%);
+  border:1px solid var(--blue);text-align:center;
+}
+.night-panel h3{color:var(--blue-bright);margin-bottom:8px}
+.night-panel .prompt{color:var(--text);font-size:16px;line-height:1.5;margin-bottom:16px}
+.target-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0}
+.target-btn{
+  padding:10px 18px;border:1px solid var(--card-border);border-radius:var(--radius);
+  background:var(--bg3);color:var(--text);cursor:pointer;transition:all .15s;font-size:15px;
+  font-family:'Crimson Text',serif;
+}
+.target-btn:hover{border-color:var(--blue-bright);background:rgba(58,90,140,.1)}
+.target-btn.selected{border-color:var(--gold);background:rgba(201,168,76,.12);color:var(--gold-bright)}
+.target-btn.shielded{opacity:.5;text-decoration:line-through}
+/* ── Vote panel ── */
+.vote-grid{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.vote-btn{
+  display:flex;align-items:center;gap:12px;padding:14px 18px;
+  border:1px solid var(--card-border);border-radius:var(--radius);
+  background:var(--bg3);color:var(--text);cursor:pointer;transition:all .15s;
+  font-size:16px;font-family:'Crimson Text',serif;text-align:left;
+}
+.vote-btn:hover{border-color:var(--red);background:rgba(168,50,50,.06)}
+.vote-btn.selected{border-color:var(--red-bright);background:rgba(168,50,50,.12);color:var(--red-bright)}
+/* ── Results ── */
+.result-card{
+  padding:24px;border-radius:12px;text-align:center;margin:12px 0;
+  border:1px solid;
+}
+.result-card.winner{border-color:var(--gold);background:rgba(201,168,76,.06)}
+.result-card.loser{border-color:var(--red-dim);background:rgba(168,50,50,.04)}
+.result-table{width:100%;border-collapse:collapse;margin:16px 0;text-align:left}
+.result-table th{
+  font-family:'Cinzel',serif;font-size:12px;letter-spacing:.08em;color:var(--text-dim);
+  padding:8px 12px;border-bottom:1px solid var(--card-border);text-transform:uppercase;
+}
+.result-table td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.03);font-size:15px}
+.result-table tr.eliminated td{color:var(--red-bright);text-decoration:line-through;opacity:.7}
+/* ── Timer ── */
+.timer{
+  font-family:'JetBrains Mono',monospace;font-size:48px;color:var(--gold-bright);
+  text-align:center;margin:16px 0;
+}
+.timer.urgent{color:var(--red-bright);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+/* ── Phase banner ── */
+.phase-banner{
+  width:100%;padding:16px;text-align:center;
+  font-family:'Cinzel',serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+  border-bottom:1px solid var(--card-border);margin-bottom:20px;
+}
+.phase-banner.night{color:var(--blue-bright);background:rgba(58,90,140,.06)}
+.phase-banner.day{color:var(--gold);background:rgba(201,168,76,.04)}
+.phase-banner.voting{color:var(--red-bright);background:rgba(168,50,50,.04)}
+/* ── Scrollable ── */
+.scroll-area{flex:1;overflow-y:auto;width:100%;display:flex;flex-direction:column;align-items:center}
+/* ── Night log (solo) ── */
+.night-log{
+  max-height:200px;overflow-y:auto;padding:12px;border-radius:var(--radius);
+  background:var(--bg);border:1px solid var(--card-border);font-size:13px;
+  font-family:'JetBrains Mono',monospace;color:var(--text-dim);margin:12px 0;
+  width:100%;
+}
+.night-log .entry{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.night-log .entry:last-child{border:none}
+/* ── Toast ── */
+.toast-container{position:fixed;top:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+.toast{
+  padding:12px 20px;border-radius:var(--radius);
+  background:var(--bg3);border:1px solid var(--card-border);color:var(--text);
+  font-size:14px;animation:slideIn .3s ease;box-shadow:var(--shadow);
+  max-width:320px;
+}
+.toast.info{border-left:3px solid var(--blue-bright)}
+.toast.success{border-left:3px solid var(--green-bright)}
+.toast.error{border-left:3px solid var(--red-bright)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+/* ── Section headers ── */
+.section-label{
+  font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-dim);margin:20px 0 8px;
+}
+/* ── Role info tooltip ── */
+.role-info-popup{
+  position:fixed;z-index:999;padding:16px;border-radius:var(--radius);
+  background:var(--bg2);border:1px solid var(--card-border);box-shadow:var(--shadow);
+  max-width:280px;font-size:14px;line-height:1.5;color:var(--text);
+  display:none;
+}
+.role-info-popup .ri-name{font-family:'Cinzel',serif;font-weight:700;color:var(--text-bright);margin-bottom:4px}
+.role-info-popup .ri-team{font-size:12px;color:var(--text-dim);margin-bottom:8px}
+/* ── Responsive ── */
+@media(max-width:500px){
+  .role-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+  .join-code{font-size:24px}
+  h1{font-size:22px!important}
+}
+/* ── Misc ── */
+.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.gap-20{gap:20px}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mt-20{margin-top:20px}.mt-32{margin-top:32px}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}
+.flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-center{justify-content:center}
+.w-full{width:100%}.text-center{text-align:center}
+.text-dim{color:var(--text-dim)}.text-gold{color:var(--gold)}.text-red{color:var(--red-bright)}.text-blue{color:var(--blue-bright)}
+.text-sm{font-size:13px}.text-lg{font-size:20px}
+.flex-row{display:flex;flex-direction:row}
+.flex-wrap{flex-wrap:wrap}
+.justify-between{justify-content:space-between}
+hr{border:none;border-top:1px solid var(--card-border);margin:16px 0}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: TITLE                                                          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-title" class="screen active">
+  <div class="container flex flex-col items-center" style="justify-content:center;min-height:100vh">
+    <div class="moon-logo"></div>
+    <h1 class="heading" style="font-size:28px;margin-bottom:4px">Ultimate Werewolf</h1>
+    <p class="text-dim text-sm mb-16" style="letter-spacing:.08em">ALL EXPANSIONS &bull; UP TO 28 PLAYERS</p>
+
+    <div class="flex flex-col gap-12 w-full" style="max-width:340px">
+      <input type="text" id="input-name" placeholder="Your name" maxlength="20" style="text-align:center">
+      <button class="btn primary w-full" onclick="createGame(false)">Create Game</button>
+      <div class="flex-row gap-8 w-full" style="display:flex">
+        <input type="text" id="input-code" placeholder="Join code" maxlength="5" style="text-transform:uppercase;text-align:center;flex:1">
+        <button class="btn w-full" onclick="joinGame()" style="flex:1">Join</button>
+      </div>
+      <hr>
+      <button class="btn ghost w-full" onclick="createGame(true)">Solo Test Mode</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: LOBBY                                                          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-lobby" class="screen">
+  <div class="container">
+    <div class="text-center mb-16">
+      <p class="text-dim text-sm" style="letter-spacing:.1em;margin-bottom:4px">GAME CODE</p>
+      <div class="join-code" id="lobby-code"></div>
+    </div>
+
+    <div class="section-label">Players (<span id="lobby-count">0</span>/<span id="lobby-max">28</span>)</div>
+    <div class="player-list" id="lobby-players"></div>
+
+    <!-- Solo: add bots -->
+    <div id="solo-controls" class="hidden mt-12">
+      <div class="flex-row gap-8" style="display:flex">
+        <input type="text" id="bot-name" placeholder="Bot name (optional)" style="flex:1">
+        <button class="btn small" onclick="addBot()">Add Bot</button>
+      </div>
+      <div class="flex-row gap-8 mt-8" style="display:flex">
+        <button class="btn small ghost" onclick="addBots(3)">+3</button>
+        <button class="btn small ghost" onclick="addBots(5)">+5</button>
+        <button class="btn small ghost" onclick="addBots(10)">+10</button>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Role Selection (host only) -->
+    <div id="role-setup" class="hidden">
+      <div class="section-label">Role Setup</div>
+      <p class="text-dim text-sm mb-8">
+        Need <span id="roles-needed" class="text-gold mono">0</span> roles
+        (<span id="roles-players" class="mono">0</span> players + <span id="roles-center" class="mono">0</span> center).
+        Selected: <span id="roles-selected" class="text-gold mono">0</span>
+      </p>
+
+      <div class="flex-row gap-8 mb-12 flex-wrap" style="display:flex">
+        <button class="btn small" onclick="filterRoles('all')">All</button>
+        <button class="btn small" onclick="filterRoles('village')">Village</button>
+        <button class="btn small" onclick="filterRoles('werewolf')">Werewolf</button>
+        <button class="btn small" onclick="filterRoles('neutral')">Neutral</button>
+      </div>
+
+      <div class="role-grid" id="role-grid"></div>
+
+      <div id="setup-validation" class="text-sm mt-8" style="min-height:20px"></div>
+
+      <div class="flex-row gap-8 mt-16" style="display:flex">
+        <button class="btn primary w-full" id="btn-start" onclick="startGame()" disabled>Start Game</button>
+      </div>
+    </div>
+
+    <!-- Non-host waiting -->
+    <div id="waiting-host" class="hidden text-center mt-16">
+      <p class="text-dim">Waiting for host to configure roles and start...</p>
+    </div>
+
+    <div class="flex-row gap-8 mt-16" style="display:flex">
+      <button class="btn small ghost" id="btn-ready" onclick="toggleReady()">Ready</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: GAME (Night, Day, Voting)                                      -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+  <div class="phase-banner" id="game-phase-banner">NIGHT</div>
+  <div class="scroll-area">
+    <div class="container">
+      <!-- Your role card -->
+      <div class="role-reveal" id="my-role-card">
+        <span class="emoji" id="my-role-emoji"></span>
+        <h2 class="role-name heading" id="my-role-name"></h2>
+        <p class="role-desc" id="my-role-desc"></p>
+      </div>
+
+      <!-- Night action area -->
+      <div id="night-area" class="mt-16">
+        <div class="night-panel" id="night-panel">
+          <h3 id="night-title">Night Phase</h3>
+          <p class="prompt" id="night-prompt">Waiting...</p>
+          <div class="target-grid" id="night-targets"></div>
+          <div class="flex-row gap-8 mt-12 justify-center" style="display:flex">
+            <button class="btn small" id="btn-confirm-night" onclick="confirmNightAction()" disabled>Confirm</button>
+            <button class="btn small ghost" id="btn-skip-night" onclick="skipNightAction()">Skip</button>
+          </div>
+        </div>
+        <!-- Night result -->
+        <div id="night-result" class="card glow mt-12 text-center hidden">
+          <p id="night-result-text" class="text-lg"></p>
+        </div>
+      </div>
+
+      <!-- Day area -->
+      <div id="day-area" class="hidden mt-16">
+        <div class="card text-center">
+          <h3 class="heading mb-8">Day Discussion</h3>
+          <p class="text-dim">Discuss with other players. Who is the werewolf?</p>
+          <div class="timer mt-12" id="day-timer"></div>
+        </div>
+        <div class="player-list mt-12" id="day-players"></div>
+        <button class="btn primary w-full mt-16" id="btn-start-vote" onclick="startVoting()">Call for Vote</button>
+      </div>
+
+      <!-- Vote area -->
+      <div id="vote-area" class="hidden mt-16">
+        <div class="text-center mb-12">
+          <h3 class="heading">Cast Your Vote</h3>
+          <p class="text-dim text-sm">Choose who to eliminate, or vote for no one.</p>
+        </div>
+        <div class="vote-grid" id="vote-grid"></div>
+        <button class="btn primary w-full mt-12" id="btn-cast-vote" onclick="castVote()" disabled>Confirm Vote</button>
+      </div>
+
+      <!-- Solo test panel -->
+      <div id="solo-panel" class="hidden mt-16">
+        <hr>
+        <div class="section-label">Solo Test Controls</div>
+        <div class="night-log" id="solo-log"></div>
+        <div id="solo-state-view" class="mt-8"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: RESULTS                                                        -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-results" class="screen">
+  <div class="scroll-area">
+    <div class="container text-center">
+      <div class="moon-logo mt-32"></div>
+      <div id="results-outcome"></div>
+      <div id="results-explanation" class="text-dim mt-8" style="font-size:17px;line-height:1.6"></div>
+
+      <div class="section-label mt-20">Final Roles</div>
+      <table class="result-table" id="results-table">
+        <thead><tr><th>Player</th><th>Original</th><th>Final</th><th>Status</th></tr></thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+
+      <div class="section-label mt-16">Center Cards</div>
+      <div id="results-center" class="flex-row gap-8 justify-center flex-wrap mt-8" style="display:flex"></div>
+
+      <div class="flex-row gap-8 mt-32 justify-center" style="display:flex">
+        <button class="btn primary" onclick="returnToLobby()">Play Again</button>
+        <button class="btn ghost" onclick="location.reload()">New Game</button>
+      </div>
+      <div style="height:40px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Role info popup -->
+<div class="role-info-popup" id="role-popup">
+  <div class="ri-name"></div>
+  <div class="ri-team"></div>
+  <div></div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- SCRIPT                                                                 -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let socket = null;
+let myPlayerId = null;
+let gameState = null;
+let allRoles = {};
+let myRoleKey = null;
+let myRoleInfo = null;
+let isHost = false;
+let isSolo = false;
+let selectedRoles = {};    // roleKey -> count
+let nightSelections = [];
+let voteSelection = null;
+let dayTimerInterval = null;
+let currentNightPrompt = null;
+let soloFullState = null;
+
+// ─── Connection ───────────────────────────────────────────────────────────────
+function connect() {
+  socket = io();
+
+  socket.on('connected', (data) => {
+    myPlayerId = data.playerId;
+  });
+
+  socket.on('state_update', (state) => {
+    gameState = state;
+    updateUI();
+  });
+
+  socket.on('game_started', () => {
+    showScreen('screen-game');
+  });
+
+  socket.on('role_info', (data) => {
+    if (data.playerId === myPlayerId) {
+      myRoleKey = data.original;
+      myRoleInfo = data;
+      updateRoleCard();
+    }
+  });
+
+  socket.on('night_prompt', (data) => {
+    currentNightPrompt = data;
+    if (isSolo) {
+      // In solo mode, show prompt for the active player
+      renderNightPrompt(data);
+      requestSoloState();
+    } else if (data.playerId === myPlayerId) {
+      renderNightPrompt(data);
+    } else {
+      document.getElementById('night-prompt').textContent = 'Another player is acting...';
+      document.getElementById('night-targets').innerHTML = '';
+      document.getElementById('btn-confirm-night').disabled = true;
+      document.getElementById('btn-skip-night').classList.add('hidden');
+    }
+  });
+
+  socket.on('night_action_result', (data) => {
+    if (data.playerId === myPlayerId || isSolo) {
+      showNightResult(data.result.info);
+      if (isSolo) appendSoloLog(`[${allRoles[data.roleKey]?.name || data.roleKey}] ${data.result.info}`);
+    }
+  });
+
+  socket.on('phase_change', (data) => {
+    if (data.phase === 'DAY') {
+      showScreen('screen-game');
+      showDayPhase();
+    }
+  });
+
+  socket.on('vote_cast', (data) => {
+    // Could show indicators
+  });
+
+  socket.on('game_results', (results) => {
+    showResults(results);
+  });
+
+  socket.on('solo_state', (state) => {
+    soloFullState = state;
+    renderSoloState();
+  });
+
+  // Fetch role definitions
+  socket.emit('get_roles', null, (roles) => {
+    allRoles = roles;
+  });
+}
+
+// ─── Screen Management ────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── Title Screen Actions ─────────────────────────────────────────────────────
+function createGame(solo) {
+  const name = document.getElementById('input-name').value.trim() || (solo ? 'Host' : 'Player');
+  isSolo = solo;
+  socket.emit('create_game', { name, isSoloTest: solo }, (res) => {
+    if (res.error) return toast(res.error, 'error');
+    isHost = true;
+    showScreen('screen-lobby');
+  });
+}
+
+function joinGame() {
+  const name = document.getElementById('input-name').value.trim() || 'Player';
+  const code = document.getElementById('input-code').value.trim().toUpperCase();
+  if (!code) return toast('Enter a join code', 'error');
+  socket.emit('join_game', { code, name }, (res) => {
+    if (res.error) return toast(res.error, 'error');
+    showScreen('screen-lobby');
+  });
+}
+
+function toggleReady() {
+  const btn = document.getElementById('btn-ready');
+  const isReady = btn.dataset.ready === 'true';
+  socket.emit('set_ready', { ready: !isReady });
+  btn.dataset.ready = (!isReady).toString();
+  btn.textContent = !isReady ? 'Not Ready' : 'Ready';
+  btn.classList.toggle('primary', !isReady);
+  btn.classList.toggle('ghost', isReady);
+}
+
+// ─── Bot Management (Solo) ────────────────────────────────────────────────────
+function addBot() {
+  const name = document.getElementById('bot-name').value.trim();
+  socket.emit('solo_add_bot', { name }, (res) => {
+    if (res.error) toast(res.error, 'error');
+    document.getElementById('bot-name').value = '';
+  });
+}
+
+function addBots(n) {
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => socket.emit('solo_add_bot', { name: '' }, () => {}), i * 50);
+  }
+}
+
+// ─── Role Selection ───────────────────────────────────────────────────────────
+function buildRoleGrid(filter = 'all') {
+  const grid = document.getElementById('role-grid');
+  grid.innerHTML = '';
+  const sorted = Object.entries(allRoles).sort((a, b) => {
+    const teamOrder = { village: 0, werewolf: 1, neutral: 2 };
+    return (teamOrder[a[1].team] || 0) - (teamOrder[b[1].team] || 0) || a[1].name.localeCompare(b[1].name);
+  });
+
+  for (const [key, role] of sorted) {
+    if (filter !== 'all' && role.team !== filter) continue;
+    const count = selectedRoles[key] || 0;
+    const chip = document.createElement('div');
+    chip.className = `role-chip team-${role.team}${count > 0 ? ' selected' : ''}`;
+    chip.innerHTML = `
+      <span class="emoji">${role.emoji || '?'}</span>
+      <span>${role.name}</span>
+      ${count > 0 ? `<span class="count">${count}</span>` : ''}
+    `;
+    chip.addEventListener('click', (e) => {
+      if (e.shiftKey || e.ctrlKey) {
+        // Decrease
+        if (selectedRoles[key]) {
+          selectedRoles[key]--;
+          if (selectedRoles[key] === 0) delete selectedRoles[key];
+        }
+      } else {
+        selectedRoles[key] = (selectedRoles[key] || 0) + 1;
+      }
+      buildRoleGrid(filter);
+      updateRoleCounts();
+      syncRoles();
+    });
+    chip.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (selectedRoles[key]) {
+        selectedRoles[key]--;
+        if (selectedRoles[key] === 0) delete selectedRoles[key];
+      }
+      buildRoleGrid(filter);
+      updateRoleCounts();
+      syncRoles();
+    });
+    // Hover info
+    chip.addEventListener('mouseenter', (e) => showRolePopup(e, role));
+    chip.addEventListener('mouseleave', hideRolePopup);
+    grid.appendChild(chip);
+  }
+}
+
+let currentFilter = 'all';
+function filterRoles(f) {
+  currentFilter = f;
+  buildRoleGrid(f);
+}
+
+function updateRoleCounts() {
+  if (!gameState) return;
+  const playerCount = gameState.players.length;
+  const centerCount = Math.min(3, Math.floor(playerCount / 6) + 1);
+  const needed = playerCount + centerCount;
+  const total = Object.values(selectedRoles).reduce((a, b) => a + b, 0);
+
+  document.getElementById('roles-needed').textContent = needed;
+  document.getElementById('roles-players').textContent = playerCount;
+  document.getElementById('roles-center').textContent = centerCount;
+  document.getElementById('roles-selected').textContent = total;
+
+  const valid = total === needed;
+  document.getElementById('btn-start').disabled = !valid;
+  const valEl = document.getElementById('setup-validation');
+  if (total < needed) valEl.innerHTML = `<span class="text-dim">Need ${needed - total} more role(s)</span>`;
+  else if (total > needed) valEl.innerHTML = `<span class="text-red">${total - needed} too many roles</span>`;
+  else valEl.innerHTML = `<span class="text-gold">✓ Ready to start</span>`;
+}
+
+function syncRoles() {
+  const roles = [];
+  for (const [key, count] of Object.entries(selectedRoles)) {
+    for (let i = 0; i < count; i++) roles.push(key);
+  }
+  socket.emit('set_roles', { roles }, () => {});
+}
+
+function showRolePopup(e, role) {
+  const popup = document.getElementById('role-popup');
+  popup.querySelector('.ri-name').textContent = `${role.emoji || ''} ${role.name}`;
+  popup.querySelector('.ri-team').textContent = role.team.charAt(0).toUpperCase() + role.team.slice(1) + ' Team';
+  popup.children[2].textContent = role.description;
+  popup.style.display = 'block';
+  const rect = e.target.getBoundingClientRect();
+  popup.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+  popup.style.top = (rect.bottom + 8) + 'px';
+}
+function hideRolePopup() {
+  document.getElementById('role-popup').style.display = 'none';
+}
+
+// ─── Game UI ──────────────────────────────────────────────────────────────────
+
+function updateRoleCard() {
+  if (!myRoleKey || !allRoles[myRoleKey]) return;
+  const role = allRoles[myRoleKey];
+  const card = document.getElementById('my-role-card');
+  card.className = `role-reveal team-${role.team}`;
+  document.getElementById('my-role-emoji').textContent = role.emoji || '?';
+  document.getElementById('my-role-name').textContent = role.name;
+  document.getElementById('my-role-desc').textContent = role.description;
+}
+
+function renderNightPrompt(data) {
+  const prompt = data.prompt;
+  if (!prompt) return;
+
+  const banner = document.getElementById('game-phase-banner');
+  banner.className = 'phase-banner night';
+  banner.textContent = 'NIGHT PHASE';
+
+  document.getElementById('night-area').classList.remove('hidden');
+  document.getElementById('day-area').classList.add('hidden');
+  document.getElementById('vote-area').classList.add('hidden');
+  document.getElementById('night-result').classList.add('hidden');
+
+  const roleName = allRoles[prompt.roleKey]?.name || prompt.roleKey;
+
+  if (isSolo) {
+    const actingPlayer = gameState?.players.find(p => p.id === data.playerId);
+    document.getElementById('night-title').textContent = `${actingPlayer?.name || '?'} — ${roleName}`;
+  } else {
+    document.getElementById('night-title').textContent = roleName;
+  }
+  document.getElementById('night-prompt').textContent = prompt.prompt || 'Choose your action...';
+
+  const targetsEl = document.getElementById('night-targets');
+  targetsEl.innerHTML = '';
+  nightSelections = [];
+
+  if (prompt.auto) {
+    document.getElementById('night-prompt').textContent = 'Resolving automatically...';
+    document.getElementById('btn-confirm-night').disabled = true;
+    document.getElementById('btn-skip-night').classList.add('hidden');
+    return;
+  }
+
+  if (prompt.choices) {
+    // Simple choice (like shift direction)
+    for (const choice of prompt.choices) {
+      const btn = document.createElement('button');
+      btn.className = 'target-btn';
+      btn.textContent = choice.charAt(0).toUpperCase() + choice.slice(1);
+      btn.onclick = () => {
+        targetsEl.querySelectorAll('.target-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        nightSelections = [choice];
+        document.getElementById('btn-confirm-night').disabled = false;
+      };
+      targetsEl.appendChild(btn);
+    }
+  } else if (prompt.targets) {
+    const maxSelect = prompt.selectCount || 1;
+    for (const t of prompt.targets) {
+      const btn = document.createElement('button');
+      btn.className = `target-btn${t.shielded ? ' shielded' : ''}`;
+      btn.textContent = t.name;
+      btn.dataset.targetId = t.id;
+      btn.onclick = () => {
+        if (nightSelections.includes(t.id)) {
+          nightSelections = nightSelections.filter(s => s !== t.id);
+          btn.classList.remove('selected');
+        } else {
+          if (nightSelections.length >= maxSelect) {
+            // Deselect first
+            const oldId = nightSelections.shift();
+            targetsEl.querySelector(`[data-target-id="${oldId}"]`)?.classList.remove('selected');
+          }
+          nightSelections.push(t.id);
+          btn.classList.add('selected');
+        }
+        document.getElementById('btn-confirm-night').disabled = nightSelections.length === 0;
+      };
+      targetsEl.appendChild(btn);
+    }
+  }
+
+  document.getElementById('btn-confirm-night').disabled = true;
+  document.getElementById('btn-skip-night').classList.remove('hidden');
+}
+
+function confirmNightAction() {
+  if (isSolo && currentNightPrompt) {
+    socket.emit('solo_night_action_for', {
+      forPlayerId: currentNightPrompt.playerId,
+      choices: nightSelections
+    }, (res) => {
+      if (res.error) toast(res.error, 'error');
+      else showNightResult(res.info);
+    });
+  } else {
+    socket.emit('night_action', { choices: nightSelections }, (res) => {
+      if (res.error) toast(res.error, 'error');
+      else showNightResult(res.info);
+    });
+  }
+}
+
+function skipNightAction() {
+  if (isSolo && currentNightPrompt) {
+    socket.emit('solo_night_action_for', {
+      forPlayerId: currentNightPrompt.playerId,
+      choices: []
+    }, (res) => {
+      if (res.info) showNightResult(res.info);
+    });
+  } else {
+    socket.emit('skip_night_action', null, () => {});
+  }
+}
+
+function showNightResult(text) {
+  if (!text) return;
+  const el = document.getElementById('night-result');
+  el.classList.remove('hidden');
+  document.getElementById('night-result-text').textContent = text;
+  document.getElementById('btn-confirm-night').disabled = true;
+}
+
+function showDayPhase() {
+  const banner = document.getElementById('game-phase-banner');
+  banner.className = 'phase-banner day';
+  banner.textContent = 'DAY PHASE';
+
+  document.getElementById('night-area').classList.add('hidden');
+  document.getElementById('day-area').classList.remove('hidden');
+  document.getElementById('vote-area').classList.add('hidden');
+
+  // Player list for day
+  const list = document.getElementById('day-players');
+  list.innerHTML = '';
+  if (gameState) {
+    for (const p of gameState.players) {
+      const item = document.createElement('div');
+      item.className = `player-item${p.id === myPlayerId ? ' me' : ''}`;
+      item.innerHTML = `
+        <span class="dot${p.alive ? '' : ' disconnected'}"></span>
+        <span class="name">${p.name}</span>
+        ${p.revealed ? `<span class="badge" style="background:rgba(88,136,204,.15);color:var(--blue-bright)">${p.revealed}</span>` : ''}
+        ${p.artifact ? `<span class="badge" style="background:rgba(106,74,138,.15);color:var(--purple-bright)">${p.artifact}</span>` : ''}
+      `;
+      list.appendChild(item);
+    }
+  }
+
+  // Timer
+  if (gameState?.dayTimer) {
+    let remaining = gameState.dayTimer;
+    const timerEl = document.getElementById('day-timer');
+    if (dayTimerInterval) clearInterval(dayTimerInterval);
+    dayTimerInterval = setInterval(() => {
+      remaining--;
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      timerEl.className = `timer${remaining <= 30 ? ' urgent' : ''}`;
+      if (remaining <= 0) clearInterval(dayTimerInterval);
+    }, 1000);
+    timerEl.textContent = `${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`;
+  }
+
+  // Only host (or solo) can call vote
+  const canVote = isHost || isSolo;
+  document.getElementById('btn-start-vote').classList.toggle('hidden', !canVote);
+
+  if (isSolo) {
+    document.getElementById('solo-panel').classList.remove('hidden');
+    requestSoloState();
+  }
+}
+
+function startVoting() {
+  socket.emit('start_voting', null, (res) => {
+    if (res.error) return toast(res.error, 'error');
+    showVotePhase();
+  });
+}
+
+function showVotePhase() {
+  const banner = document.getElementById('game-phase-banner');
+  banner.className = 'phase-banner voting';
+  banner.textContent = 'VOTING PHASE';
+
+  document.getElementById('night-area').classList.add('hidden');
+  document.getElementById('day-area').classList.add('hidden');
+  document.getElementById('vote-area').classList.remove('hidden');
+  if (dayTimerInterval) clearInterval(dayTimerInterval);
+
+  renderVoteUI();
+}
+
+function renderVoteUI() {
+  const grid = document.getElementById('vote-grid');
+  grid.innerHTML = '';
+  voteSelection = null;
+
+  if (!gameState) return;
+
+  const votePlayers = isSolo ? gameState.players : gameState.players;
+
+  // If solo, we need to vote for each player
+  if (isSolo) {
+    renderSoloVoteUI();
+    return;
+  }
+
+  for (const p of votePlayers) {
+    if (p.id === myPlayerId) continue;
+    const btn = document.createElement('button');
+    btn.className = 'vote-btn';
+    btn.innerHTML = `<span>${p.name}</span>`;
+    btn.onclick = () => {
+      grid.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      voteSelection = p.id;
+      document.getElementById('btn-cast-vote').disabled = false;
+    };
+    grid.appendChild(btn);
+  }
+
+  // No vote option
+  const noVote = document.createElement('button');
+  noVote.className = 'vote-btn';
+  noVote.innerHTML = '<span class="text-dim">Vote for No One</span>';
+  noVote.onclick = () => {
+    grid.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('selected'));
+    noVote.classList.add('selected');
+    voteSelection = 'no_vote';
+    document.getElementById('btn-cast-vote').disabled = false;
+  };
+  grid.appendChild(noVote);
+}
+
+function castVote() {
+  if (!voteSelection) return;
+  socket.emit('cast_vote', { target: voteSelection }, (res) => {
+    if (res.error) toast(res.error, 'error');
+    else {
+      document.getElementById('btn-cast-vote').disabled = true;
+      document.getElementById('btn-cast-vote').textContent = 'Vote Cast ✓';
+    }
+  });
+}
+
+// ─── Solo Vote UI ─────────────────────────────────────────────────────────────
+function renderSoloVoteUI() {
+  const grid = document.getElementById('vote-grid');
+  grid.innerHTML = '';
+  if (!gameState) return;
+
+  const players = gameState.players;
+  let currentVoterIdx = 0;
+  const soloVotes = {};
+
+  function renderVoterPanel() {
+    grid.innerHTML = '';
+    if (currentVoterIdx >= players.length) {
+      // All votes cast, submit
+      for (const [pid, target] of Object.entries(soloVotes)) {
+        socket.emit('solo_cast_vote_for', { forPlayerId: pid, target }, () => {});
+      }
+      document.getElementById('btn-cast-vote').classList.add('hidden');
+      grid.innerHTML = '<p class="text-dim text-center">All votes submitted. Resolving...</p>';
+      return;
+    }
+
+    const voter = players[currentVoterIdx];
+    const label = document.createElement('div');
+    label.className = 'text-center mb-8';
+    label.innerHTML = `<span class="heading" style="font-size:16px">${voter.name}'s Vote</span>`;
+    grid.appendChild(label);
+
+    for (const p of players) {
+      if (p.id === voter.id) continue;
+      const btn = document.createElement('button');
+      btn.className = 'vote-btn';
+      btn.innerHTML = `<span>${p.name}</span>`;
+      btn.onclick = () => {
+        soloVotes[voter.id] = p.id;
+        currentVoterIdx++;
+        renderVoterPanel();
+      };
+      grid.appendChild(btn);
+    }
+    const noVote = document.createElement('button');
+    noVote.className = 'vote-btn';
+    noVote.innerHTML = '<span class="text-dim">No Vote</span>';
+    noVote.onclick = () => {
+      soloVotes[voter.id] = 'no_vote';
+      currentVoterIdx++;
+      renderVoterPanel();
+    };
+    grid.appendChild(noVote);
+  }
+
+  document.getElementById('btn-cast-vote').classList.add('hidden');
+  renderVoterPanel();
+}
+
+// ─── Results ──────────────────────────────────────────────────────────────────
+function showResults(results) {
+  showScreen('screen-results');
+
+  const outcomeEl = document.getElementById('results-outcome');
+  if (results.winners.length > 0) {
+    const winnerNames = results.winners.map(w => w.name).join(', ');
+    const winTeam = results.winners[0].team;
+    const teamLabel = winTeam === 'village' ? 'Village' : winTeam === 'werewolf' ? 'Werewolf' : winTeam === 'tanner' ? 'Tanner' : winTeam;
+    outcomeEl.innerHTML = `
+      <h1 class="heading" style="font-size:32px;margin-top:16px">${teamLabel} Wins!</h1>
+      <p class="text-gold mt-8" style="font-size:18px">${winnerNames}</p>
+    `;
+  } else {
+    outcomeEl.innerHTML = `<h1 class="heading" style="font-size:32px;margin-top:16px;color:var(--text-dim)">No One Wins</h1>`;
+  }
+
+  document.getElementById('results-explanation').textContent = results.explanation.join(' ');
+
+  const tbody = document.getElementById('results-tbody');
+  tbody.innerHTML = '';
+  const eliminatedIds = new Set(results.eliminated.map(e => e.id));
+
+  for (const [pid, info] of Object.entries(results.allRoles)) {
+    const tr = document.createElement('tr');
+    if (eliminatedIds.has(pid)) tr.className = 'eliminated';
+    const isWinner = results.winners.some(w => w.id === pid);
+    tr.innerHTML = `
+      <td>${info.name}${pid === myPlayerId ? ' <span class="text-gold">(you)</span>' : ''}${isWinner ? ' ⭐' : ''}</td>
+      <td>${info.originalRole}</td>
+      <td>${info.finalRole}${info.originalRole !== info.finalRole ? ' <span class="text-gold">★</span>' : ''}</td>
+      <td>${eliminatedIds.has(pid) ? '<span class="text-red">Eliminated</span>' : '<span class="text-dim">Survived</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  const centerEl = document.getElementById('results-center');
+  centerEl.innerHTML = '';
+  if (results.centerCards) {
+    results.centerCards.forEach((name, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'card';
+      chip.style.cssText = 'padding:8px 16px;font-size:14px';
+      chip.textContent = `${i + 1}. ${name}`;
+      centerEl.appendChild(chip);
+    });
+  }
+}
+
+function returnToLobby() {
+  socket.emit('return_to_lobby', null, (res) => {
+    if (res.error) toast(res.error, 'error');
+    else showScreen('screen-lobby');
+  });
+}
+
+// ─── Solo Test Helpers ────────────────────────────────────────────────────────
+function requestSoloState() {
+  socket.emit('solo_get_full_state', null, (state) => {
+    soloFullState = state;
+    renderSoloState();
+  });
+}
+
+function renderSoloState() {
+  if (!soloFullState) return;
+  const view = document.getElementById('solo-state-view');
+  let html = '<div class="card" style="font-size:13px;font-family:\'JetBrains Mono\',monospace">';
+  html += '<div class="heading" style="font-size:12px;margin-bottom:8px">ASSIGNMENT MAP</div>';
+
+  for (const [pid, info] of Object.entries(soloFullState.currentAssignments || {})) {
+    const orig = soloFullState.originalAssignments?.[pid];
+    const player = soloFullState.players?.find(p => p.id === pid);
+    const changed = orig?.role !== info.role;
+    html += `<div style="padding:2px 0;${changed ? 'color:var(--gold)' : ''}">`;
+    html += `${player?.name || pid.slice(0, 8)}: ${info.name}`;
+    if (changed) html += ` <span class="text-dim">(was ${orig?.name})</span>`;
+    html += '</div>';
+  }
+
+  html += '<div style="margin-top:8px;border-top:1px solid var(--card-border);padding-top:8px">';
+  html += '<div class="heading" style="font-size:12px;margin-bottom:4px">CENTER</div>';
+  (soloFullState.centerCards || []).forEach((c, i) => {
+    const orig = soloFullState.centerOriginal?.[i];
+    const changed = orig?.role !== c.role;
+    html += `<div${changed ? ' style="color:var(--gold)"' : ''}>Slot ${i + 1}: ${c.name}${changed ? ` (was ${orig?.name})` : ''}</div>`;
+  });
+  html += '</div></div>';
+
+  view.innerHTML = html;
+}
+
+function appendSoloLog(text) {
+  const log = document.getElementById('solo-log');
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.textContent = text;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ─── UI Update Loop ───────────────────────────────────────────────────────────
+function updateUI() {
+  if (!gameState) return;
+
+  if (gameState.phase === 'LOBBY') {
+    document.getElementById('lobby-code').textContent = gameState.id;
+    document.getElementById('lobby-count').textContent = gameState.players.length;
+
+    const list = document.getElementById('lobby-players');
+    list.innerHTML = '';
+    for (const p of gameState.players) {
+      const item = document.createElement('div');
+      item.className = `player-item${p.id === myPlayerId ? ' me' : ''}`;
+      item.innerHTML = `
+        <span class="dot${p.ready ? ' ready' : ''}"></span>
+        <span class="name">${p.name}</span>
+        ${p.id === gameState.hostId ? '<span class="badge host">Host</span>' : ''}
+      `;
+      list.appendChild(item);
+    }
+
+    isHost = myPlayerId === gameState.hostId;
+    document.getElementById('role-setup').classList.toggle('hidden', !isHost);
+    document.getElementById('waiting-host').classList.toggle('hidden', isHost);
+    document.getElementById('solo-controls').classList.toggle('hidden', !gameState.isSoloTest);
+
+    if (isHost) {
+      updateRoleCounts();
+      if (document.getElementById('role-grid').children.length === 0) {
+        buildRoleGrid();
+      }
+    }
+  }
+
+  if (gameState.phase === 'VOTING' && document.getElementById('screen-game').classList.contains('active')) {
+    showVotePhase();
+  }
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
