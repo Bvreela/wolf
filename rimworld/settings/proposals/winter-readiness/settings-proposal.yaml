@@ -1,7 +1,7 @@
 # Example output from propose_settings_package; not active.
 schema_version: 1
 id: proposal.winter_readiness
-revision: 1
+revision: 2
 status: proposed
 
 proposal_id: winter-readiness
@@ -36,4 +36,4 @@ files:
 promotion_request:
   requested_activation: false
   trial_scenarios: [crashlanded_cold_shelter_pressure]
-  compare_against_registry_revision: 1
+  compare_against_registry_revision: 2

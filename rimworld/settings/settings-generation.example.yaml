@@ -1,7 +1,7 @@
 # Rules for the proposed propose_settings_package application tool.
 schema_version: 1
 id: settings_generation.default
-revision: 1
+revision: 2
 status: draft
 
 workspace:
@@ -24,6 +24,8 @@ protected_kinds:
   - reviewer_guidance
   - evaluation
   - research_priorities
+  - building_strategy
+  - lessons_policy
   - settings_generation
 
 limits:

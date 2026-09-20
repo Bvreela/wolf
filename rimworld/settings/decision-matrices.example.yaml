@@ -1,7 +1,7 @@
 # Each row offers at most four productive choices plus CONTINUE and ESCALATE.
 schema_version: 1
 id: matrices.core
-revision: 1
+revision: 2
 status: draft
 
 matrices:
@@ -18,6 +18,37 @@ matrices:
           - {id: ADJUST_POLICY, action_template: adjust_food_policy}
         fallback_options: [CONTINUE, ESCALATE]
         verify: food_inventory_improved
+
+  - id: matrix.shelter_site
+    domain: shelter
+    rows:
+      - id: shelter.select_site
+        priority: 100
+        when_all: [shelter_site_plan_needed, shelter_candidates_ready]
+        productive_options:
+          - {id: REUSE_EXISTING, action_template: select_reuse_site}
+          - {id: OPEN_CONSTRUCTION, action_template: select_open_site}
+          - {id: EXCAVATION, action_template: select_excavation_site}
+          - {id: HYBRID, action_template: select_hybrid_site}
+        candidate_binding: one_validated_candidate_per_offered_family
+        criteria_source: building.colony
+        fallback_options: [CONTINUE, ESCALATE]
+        verify: selected_site_plan_validated_and_reserved
+
+  - id: matrix.shelter_phase
+    domain: shelter
+    rows:
+      - id: shelter.advance_site
+        priority: 100
+        when_all: [selected_site_plan_validated_and_reserved, next_site_phase_ready]
+        productive_options:
+          - {id: CLEAR_PHASE, action_template: clear_validated_phase}
+          - {id: MINE_PHASE, action_template: mine_validated_phase}
+          - {id: BUILD_PHASE, action_template: construct_validated_phase}
+          - {id: INSPECT_PHASE, action_template: inspect_site_phase}
+        candidate_binding: one_validated_ready_phase_per_offered_action_kind
+        fallback_options: [CONTINUE, ESCALATE]
+        verify: selected_phase_outcome_observed
 
   - id: matrix.shelter_recovery
     domain: shelter

@@ -1,7 +1,7 @@
 # Long-horizon intent; the runtime materializes only the current goals/tasks.
 schema_version: 1
 id: plans.colony_survival
-revision: 1
+revision: 2
 status: draft
 
 plans:
@@ -13,7 +13,8 @@ plans:
       - objective.useful_research
       - objective.defensive_readiness
     horizon_game_days: 60
-    strategy: Establish stable maintenance before expanding research and defense.
+    strategy: Establish stable maintenance, using temporary shelter when needed and proposing durable shelter upgrades when available pawn capacity justifies them.
+    building_strategy_id: building.colony
     assumptions:
       - scenario_and_mod_catalog_validated
       - at_least_one_controllable_colonist
@@ -46,6 +47,8 @@ plans:
       - milestone_infeasible
       - maintenance_state_changed
       - colonist_joined_or_lost
+      - miner_or_builder_capacity_changed
+      - shelter_upgrade_value_changed
       - biome_or_season_constraint_changed
       - threat_profile_changed
       - human_objective_changed

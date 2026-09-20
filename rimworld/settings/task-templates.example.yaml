@@ -1,7 +1,7 @@
 # Bounded task intents. Actions and predicates must already exist in registries.
 schema_version: 1
 id: tasks.core
-revision: 1
+revision: 2
 status: draft
 
 templates:
@@ -15,6 +15,36 @@ templates:
     retry_limit: 2
     timeout_game_hours: 12
     stop_when: food_maintenance_satisfied
+
+  - id: task.select_shelter_site
+    domain: shelter
+    required_observations: [shelter_state, pawn_work_capacity, map_build_candidates, applicable_lessons]
+    preconditions: [shelter_site_plan_needed, shelter_candidates_ready]
+    matrix_id: matrix.shelter_site
+    building_strategy_id: building.colony
+    allowed_action_templates: [select_reuse_site, select_open_site, select_excavation_site, select_hybrid_site]
+    verification: selected_site_plan_validated_and_reserved
+    retry_limit: 2
+    timeout_game_hours: 1
+    stop_when: selected_site_plan_validated_and_reserved
+
+  - id: task.advance_shelter_site
+    domain: shelter
+    required_observations: [selected_site_plan, phase_progress, pawn_work_capacity, current_map_safety]
+    preconditions: [selected_site_plan_validated_and_reserved, next_site_phase_ready]
+    matrix_id: matrix.shelter_phase
+    allowed_action_templates: [clear_validated_phase, mine_validated_phase, construct_validated_phase, inspect_site_phase]
+    verification: selected_site_ready_for_sleep_assignments
+    execution:
+      unit: one_bounded_ready_phase_per_attention_decision
+      phase_cursor: persisted_in_selected_site_plan
+      retry_scope: failed_attempt_within_phase
+      phase_success: advance_cursor_only_after_observed_completion
+      deadline_source: validated_site_plan_with_temporary_shelter_gate
+      plan_invalidation: suspend_release_unused_reservations_and_replan
+    retry_limit: 2
+    timeout_game_hours: 72
+    stop_when: selected_site_ready_for_sleep_assignments
 
   - id: task.provide_safe_sleeping_space
     domain: shelter

@@ -1,7 +1,7 @@
 # Example settings manifest; not loaded by RimAgent.
 schema_version: 1
 id: settings.registry
-revision: 1
+revision: 2
 status: draft
 
 load_order:
@@ -14,6 +14,8 @@ load_order:
   - reviewer_guidance
   - evaluation
   - research_priorities
+  - building_strategy
+  - lessons_policy
   - long_term_plans
   - action_workflows
   - settings_generation
@@ -31,7 +33,7 @@ files:
     owner: human
   - kind: task_templates
     id: tasks.core
-    revision: 1
+    revision: 2
     path: task-templates.example.yaml
     owner: human
   - kind: attention_policy
@@ -41,22 +43,22 @@ files:
     owner: human
   - kind: decision_matrices
     id: matrices.core
-    revision: 1
+    revision: 2
     path: decision-matrices.example.yaml
     owner: human
   - kind: planner_guidance
     id: guidance.planner
-    revision: 1
+    revision: 2
     path: guidance/planner.example.md
     owner: human
   - kind: reviewer_guidance
     id: guidance.reviewer
-    revision: 1
+    revision: 2
     path: guidance/reviewer.example.md
     owner: human
   - kind: evaluation
     id: evaluation.default
-    revision: 1
+    revision: 2
     path: evaluation.example.yaml
     owner: human
   - kind: research_priorities
@@ -66,23 +68,34 @@ files:
     owner: human
   - kind: long_term_plans
     id: plans.colony_survival
-    revision: 1
+    revision: 2
     path: long-term-plans.example.yaml
     owner: human
   - kind: action_workflows
     id: workflows.core
-    revision: 1
+    revision: 2
     path: action-workflows.example.yaml
     owner: human
   - kind: settings_generation
     id: settings_generation.default
-    revision: 1
+    revision: 2
     path: settings-generation.example.yaml
+    owner: human
+  - kind: building_strategy
+    id: building.colony
+    revision: 1
+    path: building-strategy.example.yaml
+    owner: human
+  - kind: lessons_policy
+    id: learning.lessons
+    revision: 1
+    path: lessons-learned.example.yaml
     owner: human
 
 activation:
   atomic_registry_swap: true
   require_full_reference_validation: true
+  reference_validation_phase: after_all_files_parsed
   preserve_prior_revisions: 10
   reject_unknown_setting_kinds: true
   reject_duplicate_ids: true
