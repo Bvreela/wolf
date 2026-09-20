@@ -1,4 +1,5 @@
 # Editable design example; not loaded by RimAgent.
+# Registered by settings/registry.example.yaml.
 # Predicate/capability IDs below describe proposed framework registry entries.
 # Resolve project defNames and prerequisites against the actual game/mod catalog.
 schema_version: 1

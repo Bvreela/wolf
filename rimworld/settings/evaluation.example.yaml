@@ -1,0 +1,54 @@
+# Controlled evaluation and promotion rules.
+schema_version: 1
+id: evaluation.default
+revision: 1
+status: draft
+
+scenario_sets:
+  development:
+    - id: crashlanded_temperate_food_shortage
+      seeds: [101, 102, 103]
+      max_game_days: 15
+    - id: crashlanded_cold_shelter_pressure
+      seeds: [201, 202, 203]
+      max_game_days: 20
+  held_out:
+    - id: crashlanded_mixed_pressure
+      seeds: [901, 902, 903]
+      max_game_days: 30
+
+metrics:
+  primary:
+    - colony_survival
+    - colonist_survival
+    - maintenance_satisfied_hours
+  secondary:
+    - time_to_food_security
+    - time_to_suitable_shelter
+    - avoidable_mental_breaks
+    - time_to_useful_research_capability
+    - game_writes
+    - planner_calls
+    - selector_calls
+  guardrails:
+    - unvalidated_actions
+    - human_override_conflicts
+    - emergency_response_failures
+
+regression_fixtures:
+  - already_satisfied_goal
+  - missing_observation
+  - stale_provider_reply
+  - conflicting_resource_locks
+  - interrupted_workflow
+  - human_owned_steward_queue
+  - selector_returns_unoffered_option
+  - workflow_dependency_cycle
+
+promotion:
+  require_zero_guardrail_regressions: true
+  require_development_improvement: true
+  require_no_held_out_regression: true
+  require_matched_baseline_revision: true
+  require_reviewable_evidence: true
+  activation: human_approval
